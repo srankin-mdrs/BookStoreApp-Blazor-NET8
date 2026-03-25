@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+//yes
 
 // Add services to the container.
 var connString = builder.Configuration.GetConnectionString("BookStoreAppDbConnection");

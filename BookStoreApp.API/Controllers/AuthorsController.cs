@@ -31,7 +31,7 @@ namespace BookStoreApp.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AuthorReadOnlyDto>>> GetAuthors()
         {
-            
+
             try
             {
                 var authors = await _context.Authors.ToListAsync();

@@ -15,14 +15,16 @@ public partial class BookStoreDbContext : DbContext
     {
     }
 
-    public virtual DbSet<Author> Authors { get; set; } = null!;
+    public virtual DbSet<Author> Authors { get; set; }
 
-    public virtual DbSet<Book> Books { get; set; } = null!;
+    public virtual DbSet<Book> Books { get; set; }
+
+  
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Author>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Authors__3214EC07BBC71186");
+            entity.HasKey(e => e.Id).HasName("PK__Authors__3214EC0760D37A0C");
 
             entity.Property(e => e.Bio).HasMaxLength(250);
             entity.Property(e => e.FirstName).HasMaxLength(50);
@@ -31,9 +33,9 @@ public partial class BookStoreDbContext : DbContext
 
         modelBuilder.Entity<Book>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Books__3214EC0760ADCE15");
+            entity.HasKey(e => e.Id).HasName("PK__Books__3214EC07E82CE254");
 
-            entity.HasIndex(e => e.Isbn, "UQ__Books__447D36EA80A2B3E5").IsUnique();
+            entity.HasIndex(e => e.Isbn, "UQ__Books__447D36EA244EA01A").IsUnique();
 
             entity.Property(e => e.Image).HasMaxLength(50);
             entity.Property(e => e.Isbn)

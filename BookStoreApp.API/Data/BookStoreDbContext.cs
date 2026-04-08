@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookStoreApp.API.Data;
 
-public partial class BookStoreDbContext : DbContext
+public partial class BookStoreDbContext : IdentityDbContext<ApplicationUser>
 {
     public BookStoreDbContext()
     {
@@ -19,12 +21,13 @@ public partial class BookStoreDbContext : DbContext
 
     public virtual DbSet<Book> Books { get; set; }
 
-  
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<Author>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Authors__3214EC0760D37A0C");
+            entity.HasKey(e => e.Id).HasName("PK__Authors__3214EC0737286045");
 
             entity.Property(e => e.Bio).HasMaxLength(250);
             entity.Property(e => e.FirstName).HasMaxLength(50);
@@ -33,9 +36,9 @@ public partial class BookStoreDbContext : DbContext
 
         modelBuilder.Entity<Book>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Books__3214EC07E82CE254");
+            entity.HasKey(e => e.Id).HasName("PK__Books__3214EC07E6E00B37");
 
-            entity.HasIndex(e => e.Isbn, "UQ__Books__447D36EA244EA01A").IsUnique();
+            entity.HasIndex(e => e.Isbn, "UQ__Books__447D36EAE7A68A91").IsUnique();
 
             entity.Property(e => e.Image).HasMaxLength(50);
             entity.Property(e => e.Isbn)
@@ -49,6 +52,64 @@ public partial class BookStoreDbContext : DbContext
                 .HasForeignKey(d => d.AuthorId)
                 .HasConstraintName("FK_Books_ToTable");
         });
+
+        modelBuilder.Entity<IdentityRole>().HasData(
+            new IdentityRole
+            {
+                Name = "User",
+                NormalizedName = "USER",
+                Id = "5a9f1997-9fca-4902-8c14-4d4e9bf2fe6a"
+            },
+            
+            new IdentityRole
+            {
+
+                Name = "Administrator",
+                NormalizedName = "ADMINISTRATOR",
+                Id = "c4675574-d664-48aa-93b0-e2368514bcc6"
+            }
+        );
+
+        var hasher = new PasswordHasher<ApplicationUser>();
+
+        modelBuilder.Entity<ApplicationUser>().HasData(
+            new ApplicationUser
+            {
+                Id = "5a2a01aa-74bf-46d9-b098-152125102652",
+                Email = "admin@bookstore.com",
+                NormalizedEmail = "ADMIN@BOOKSTORE.COM",
+                UserName = "admin@bookstore.com",
+                NormalizedUserName = "ADMIN@BOOKSTORE.COM",
+                FirstName = "System",
+                LastName = "Admin",
+                PasswordHash = hasher.HashPassword(null, "Password1")
+            },
+
+            new ApplicationUser
+            {
+                Id = "084eacc6-32de-47c8-bde1-0cd746032f4f",
+                Email = "user@bookstore.com",
+                NormalizedEmail = "USER@BOOKSTORE.COM",
+                UserName = "user@bookstore.com",
+                NormalizedUserName = "USER@BOOKSTORE.COM",
+                FirstName = "System",
+                LastName = "User",
+                PasswordHash = hasher.HashPassword(null, "Password1")
+            }
+        );
+
+        modelBuilder.Entity<IdentityUserRole<string>>().HasData(
+            new IdentityUserRole<string>
+            {
+                RoleId = "5a9f1997-9fca-4902-8c14-4d4e9bf2fe6a",
+                UserId = "084eacc6-32de-47c8-bde1-0cd746032f4f"
+            },
+            new IdentityUserRole<string>
+            {
+                RoleId = "c4675574-d664-48aa-93b0-e2368514bcc6",
+                UserId = "5a2a01aa-74bf-46d9-b098-152125102652"
+            }
+        );
 
         OnModelCreatingPartial(modelBuilder);
     }

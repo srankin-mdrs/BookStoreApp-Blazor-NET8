@@ -1,38 +1,49 @@
 ﻿using AutoMapper;
 using BookStoreApp.API.Data;
 using BookStoreApp.API.Models.User;
+using BookStoreApp.API.Static;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace BookStoreApp.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous]
     public class AuthController : ControllerBase
     {
         private readonly ILogger<AuthController> logger;
         private readonly IMapper mapper;
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly IConfiguration configuration;
 
-        public AuthController(ILogger<AuthController> logger, IMapper mapper, UserManager<ApplicationUser> userManager)
+        public AuthController(ILogger<AuthController> logger, IMapper mapper, UserManager<ApplicationUser> userManager, IConfiguration configuration)
         {
             this.logger = logger;
             this.mapper = mapper;
             this.userManager = userManager;
+            this.configuration = configuration;
         }
 
         [HttpPost]
         [Route("register")]
         public async Task<IActionResult> Register(UserDto userDto)
         {
-            logger.LogInformation($"Register Attempt for {userDto.Email}");
+            logger.LogInformation($"Register Attempt for {userDto.Email} ");
             try
             {
                 var user = mapper.Map<ApplicationUser>(userDto);
+                user.UserName = userDto.Email;
                 var result = await userManager.CreateAsync(user, userDto.Password);
 
-                if (result.Succeeded)
+                if (result.Succeeded == false)
                 {
                     foreach (var error in result.Errors)
                     {
@@ -54,7 +65,7 @@ namespace BookStoreApp.API.Controllers
 
         [HttpPost]
         [Route("login")]
-        public async Task<IActionResult> Login(LoginUserDto userDto)
+        public async Task<ActionResult<AuthResponse>> Login(LoginUserDto userDto)
         {
             logger.LogInformation($"Login Attempt for {userDto.Email}");
             try
@@ -64,10 +75,19 @@ namespace BookStoreApp.API.Controllers
 
                 if (user == null || passwordValid == false )
                 {
-                    return NotFound();
+                    return Unauthorized();
                 }
 
-                return Accepted();
+                string tokenString = await GenerateToken(user);
+
+                var response = new AuthResponse
+                {
+                    Email = userDto.Email,
+                    Token = tokenString,
+                    UserId = user.Id,
+                };
+
+                return response;
             }
             catch (Exception ex)
             {
@@ -75,6 +95,39 @@ namespace BookStoreApp.API.Controllers
                 logger.LogError(ex, $"Something Went Wrong in the {nameof(Login)} ");
                 return Problem($"Something Went Wrong in the {nameof(Login)}", statusCode: 500);
             }
+        }
+
+        private async Task<string> GenerateToken(ApplicationUser user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var role = await userManager.GetRolesAsync(user);
+            var roleClaims = role.Select(q => new Claim(ClaimTypes.Role, q)).ToList();
+
+            var userClaims = await userManager.GetClaimsAsync(user);
+
+            var claims = new List<Claim>
+            {
+                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(CustomClaimTypes.Uid, user.Id)
+
+            }
+            .Union(userClaims)
+            .Union(roleClaims);
+
+            var token = new JwtSecurityToken(
+                   issuer: configuration["JwtSettings:Issuer"],
+                   audience: configuration["JwtSettings:Audience"],
+                   claims: claims,
+                   expires: DateTime.UtcNow.AddMinutes(Convert.ToInt32(configuration["JwtSettings:Duration"])),
+                   signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+
         }
     }
 }
